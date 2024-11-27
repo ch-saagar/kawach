@@ -30,6 +30,7 @@ def upload_pdf():
     
     pdf_path = "uploaded.pdf"
     pdf_file.save(pdf_path)
+    preprocess_pdf()
     
     return jsonify({"message": "PDF uploaded successfully"}), 200
 
@@ -188,9 +189,8 @@ def get_image():
     filename = request.args.get('filename')
     return send_file(filename, as_attachment=True)
 
-# Preprocess PDF on start
-if ("uploaded.pdf"):
-    preprocess_pdf()
+
+    
 
 if __name__ == '__main__':
     app.run(debug=True)
