@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Extractor and Question Answering</title>
+    <style>
+        /* Basic reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: #333;
+            /* background: #b16e93; */
+            background: linear-gradient(to bottom, #ffffff, #5553e9); /* Gradient */
+            /* background: url('background.jpg') no-repeat center center fixed; Image */
+            /* background-size: cover; Scale the image to cover the entire background */
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #4a90e2;
+        }
+
+        /* Logo styling */
+        .logo {
+            width: 150px;
+            margin-bottom: 20px;
+        }
+
+        /* Hide the default file input */
+        #pdfFile {
+            display: none;
+        }
+
+        /* Styled label as upload button */
+        label {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #4a90e2;
+            color: #fff;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-bottom: 10px;
+        }
+
+        label:hover {
+            background: #357abf;
+        }
+
+        /* File name display */
+        #fileName {
+            margin: 10px 0;
+            font-weight: bold;
+            color: #4a90e2;
+        }
+
+        /* Button styles */
+        button {
+            padding: 10px;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4a90e2;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            width: 180px;
+            transition: background 0.3s;
+            text-align: center;
+        }
+        /* changes color when wehover over different buttons */
+        button:hover {
+            background-color: #40bf35;
+        }
+
+        /* Section to display download links */
+        #resultLinks {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #resultLinks a {
+            margin-top: 10px;
+            color: #4a90e2;
+            font-weight: bold;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        #resultLinks a:hover {
+            color: #357abf;
+        }
+
+        /* Error message */
+        #errorMessage {
+            margin-top: 10px;
+            color: red;
+            font-weight: bold;
+        }
+
+        /* Question Answering Section */
+        #answerOutput {
+            margin-top: 20px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        /* Image display container */
+        #extractedImages {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        #imagesContainer {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        #imagesContainer img {
+            width: 150px;
+            height: auto;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        /* Style for question input box */
+        #questionInput {
+            width: 46%; /* Adjust width as needed */
+            height: 40px; /* Adjust height for better visibility */
+            padding: 10px; /* Add padding for comfortable typing */
+            margin-top: 10px; /* Add spacing from the elements above */
+            font-size: 16px; /* Increase font size for readability */
+            border: 2px solid #4a90e2; /* Add a border for better focus */
+            border-radius: 5px; /* Rounded corners */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Optional: Add a subtle shadow */
+            outline: none; /* Remove the default outline */
+        }
+
+        #questionInput:focus {
+            border-color: #b6bf35; /* Change border color on focus */
+            box-shadow: 0 0 5px rgba(156, 199, 77, 0.8); /* Add glow effect on focus */
+        }
+
+        /* Styled box for answer output */
+        .answer-box {
+            margin-top: 20px;
+            margin-bottom:50px;
+            padding: 15px;
+            width: 80%;
+            max-width: 600px;
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            color: #333;
+            font-weight: bold;
+            box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+            overflow-y: auto; /* Ensures scroll for long content */
+            max-height: 200px; /* Limits box height */
+            text-align: left;
+            word-wrap: break-word; /* Prevents overflow of long words */
+        }
+
+        #answerOutput img {
+            max-width: 200px;
+            margin: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+    </style>
+</head>
+<body>
+    <!-- Logo -->
+    <img src="{{ url_for('static', filename='logo/logo-footer.png') }}" alt="Logo" class="logo">
+
+    <!-- Page Title -->
+    <h1>PDF Extractor and Question Answering</h1>
+
+    <!-- File upload input with styled label and file name display -->
+    <label for="pdfFile">Choose PDF File</label>
+    <input type="file" id="pdfFile" accept="application/pdf" onchange="displayFileName()">
+    <div id="fileName">No file selected</div>
+
+    <!-- Error message -->
+    <div id="errorMessage"></div>
+
+    <!-- Buttons to trigger different extraction actions -->
+    <button onclick="uploadPDF()">Upload PDF</button>
+    <button onclick="extractText()">Extract Text</button>
+    <button onclick="extractImages()">Extract Images</button>
+    <button onclick="extractBoth()">Extract Both</button>
+    <button onclick="resetAll()">Reset</button>
+
+    <!-- Section to display download links -->
+    <div id="resultLinks"></div>    
+
+    <!-- Question Answering Section -->
+    <h2>Ask a Question</h2>
+    <input type="text" id="questionInput" placeholder="Enter your question about the PDF">
+    <button onclick="askQuestion()">Submit Question</button>
+    <div id="answerOutput" class="answer-box"></div>
+
+    <!-- JavaScript to handle the upload, extraction, question answering, and reset -->
+    <script>
+        function displayFileName() {
+            const pdfFile = document.getElementById('pdfFile').files[0];
+            const fileNameDisplay = document.getElementById('fileName');
+            fileNameDisplay.textContent = pdfFile ? `Selected file: ${pdfFile.name}` : "No file selected";
+            document.getElementById('errorMessage').textContent = '';  // Clear error message if file is selected
+        }
+
+        async function uploadPDF() {
+            const pdfFile = document.getElementById('pdfFile').files[0];
+            const errorMessage = document.getElementById('errorMessage');
+
+            if (!pdfFile) {
+                errorMessage.textContent = "Please select a PDF file to upload.";
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('pdf', pdfFile);
+
+            const response = await fetch('http://127.0.0.1:5000/upload_pdf', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                errorMessage.textContent = '';  // Clear error message if upload is successful
+                alert(result.message);
+            } else {
+                errorMessage.textContent = result.message || "An error occurred during upload.";
+            }
+        }
+
+        async function extractText() {
+            const response = await fetch('http://127.0.0.1:5000/extract_text');
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'text_only.pdf';
+            link.textContent = 'Download Text PDF';
+            document.getElementById('resultLinks').appendChild(link);
+        }
+
+        async function extractImages() {
+            const response = await fetch('http://127.0.0.1:5000/extract_images');
+            const result = await response.json(); // Expecting an array of image URLs
+
+            const imagesContainer = document.getElementById('imagesContainer');
+            imagesContainer.innerHTML = ""; // Clear previous images
+
+            if (result.images && result.images.length > 0) {
+                result.images.forEach((imageUrl, index) => {
+                    const img = document.createElement('img');
+                    img.src = imageUrl;
+                    img.alt = `Extracted Image ${index + 1}`;
+                    imagesContainer.appendChild(img);
+                });
+            } else {
+                imagesContainer.innerHTML = "<p>No images were extracted.</p>";
+            }
+        }
+
+        async function extractBoth() {
+            const response = await fetch('http://127.0.0.1:5000/extract_both');
+            const result = await response.json();
+
+            document.getElementById('resultLinks').innerHTML = "";
+
+            const textLink = document.createElement('a');
+            textLink.href = result.text_url;
+            textLink.download = 'text_only.pdf';
+            textLink.textContent = 'Download Text PDF';
+            document.getElementById('resultLinks').appendChild(textLink);
+
+            const imagesLink = document.createElement('a');
+            imagesLink.href = result.images_url;
+            imagesLink.download = 'images_only.pdf';
+            imagesLink.textContent = 'Download Images PDF';
+            document.getElementById('resultLinks').appendChild(imagesLink);
+        }
+
+        async function askQuestion() {
+            const question = document.getElementById('questionInput').value;
+            const answerOutput = document.getElementById('answerOutput');
+
+            if (!question) {
+                alert("Please enter a question.");
+                return;
+            }
+
+            // Send question to the server
+            const response = await fetch('http://127.0.0.1:5000/ask_question', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question })
+            });
+
+            const result = await response.json();
+            
+            // Clear previous content
+            answerOutput.innerHTML = "";
+
+            // Handle text answer
+            if (result.answer) {
+                const answerText = document.createElement('p');
+                answerText.textContent = result.answer;
+                answerOutput.appendChild(answerText);
+            }
+
+            // Handle images in the response
+            console.log("resut.images ----->>", result.images);
+            if (result.images && result.images.length > 0) {
+                result.images.forEach((imageUrl) => {
+                    const img = document.createElement('img');
+                    img.src = imageUrl;
+                    img.alt = "Answer-related image";
+                    img.style.width = "150px";
+                    img.style.margin = "10px";
+                    img.style.border = "1px solid #ccc";
+                    img.style.borderRadius = "5px";
+                    answerOutput.appendChild(img);
+                });
+            } else {
+                // If no images are found, you can display a message or leave it blank
+                const noImageText = document.createElement('p');
+                noImageText.textContent = "No images found for this question.";
+                noImageText.style.color = "gray";
+                answerOutput.appendChild(noImageText);
+            }
+        }
+
+        function resetAll() {
+            // Reset file input if the element exists
+            const pdfFileElement = document.getElementById('pdfFile');
+            if (pdfFileElement) {
+                pdfFileElement.value = "";
+            }
+
+            // Reset file name text if the element exists
+            const fileNameElement = document.getElementById('fileName');
+            if (fileNameElement) {
+                fileNameElement.textContent = "No file selected";
+            }
+
+            // Reset result links if the element exists
+            const resultLinksElement = document.getElementById('resultLinks');
+            if (resultLinksElement) {
+                resultLinksElement.innerHTML = "";
+            }
+
+            // Reset images container if the element exists
+            const imagesContainerElement = document.getElementById('imagesContainer');
+            if (imagesContainerElement) {
+                imagesContainerElement.innerHTML = "";
+            }
+
+            // Reset error message if the element exists
+            const errorMessageElement = document.getElementById('errorMessage');
+            if (errorMessageElement) {
+                errorMessageElement.textContent = "";
+            }
+
+            // Reset answer output if the element exists
+            const answerOutputElement = document.getElementById('answerOutput');
+            if (answerOutputElement) {
+                answerOutputElement.textContent = "";
+            }
+        }
+
+    </script>
+</body>
+</html>
