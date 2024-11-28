@@ -5,12 +5,13 @@ from reportlab.pdfgen import canvas
 from PIL import Image
 import io
 import os
-
+from flask_cors import CORS
 from sentence_transformers import SentenceTransformer, util
 import numpy as np
 
 
 app = Flask(__name__)
+CORS(app)
 
 # Paths for temporary files
 TEXT_PDF_PATH = "text_only.pdf"
@@ -30,9 +31,9 @@ def upload_pdf():
     
     pdf_path = "uploaded.pdf"
     pdf_file.save(pdf_path)
-    preprocess_pdf()
     
-    return jsonify({"message": "PDF uploaded successfully"}), 200
+    preprocess_pdf()
+    return jsonify({"message": "PDF uploaded and processed successfully"}), 200
 
 @app.route('/extract_text', methods=['GET'])
 def extract_text():
@@ -189,8 +190,6 @@ def get_image():
     filename = request.args.get('filename')
     return send_file(filename, as_attachment=True)
 
-
-    
 
 if __name__ == '__main__':
     app.run(debug=True)
